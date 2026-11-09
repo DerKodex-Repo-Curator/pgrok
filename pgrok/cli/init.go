@@ -83,7 +83,10 @@ token: "%s"
 
 # Dynamic forward rules and use "forward_addr" as catch-all.
 #dynamic_forwards: |
-#  /api http://localhost:8080`
+#  /api http://localhost:8080
+
+# The local address of the request inspector web UI for HTTP tunnels, "false" to disable.
+#inspect_addr: "127.0.0.1:4040"`
 	config := fmt.Sprintf(
 		configTemplate,
 		cmd.String("remote-addr"),

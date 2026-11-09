@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"unknwon.dev/x/logx"
 
 	"github.com/pgrok/pgrok/internal/dynamicforward"
+	"github.com/pgrok/pgrok/internal/inspector"
 )
 
 func commandHTTP(homeDir string, logger *logx.Logger) *cli.Command {
@@ -53,6 +55,11 @@ func commandHTTP(homeDir string, logger *logx.Logger) *cli.Command {
 				Name:    "subdomain",
 				Usage:   "specify a custom subdomain prefix for a deterministic tunnel URL",
 				Aliases: []string{"s"},
+			},
+			&cli.StringFlag{
+				Name:  "inspect-addr",
+				Usage: `The local address to serve the request inspector on, "false" to disable`,
+				Value: defaultInspectAddr,
 			},
 		),
 	}
@@ -102,6 +109,29 @@ func actionHTTP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) erro
 		logger.FatalContext(ctx, "Failed to create forward handler", "error", err)
 	}
 
+	inspectAddr := defaultInspectAddr
+	if config.InspectAddr != nil {
+		inspectAddr = *config.InspectAddr
+	}
+	if cmd.IsSet("inspect-addr") {
+		inspectAddr = cmd.String("inspect-addr")
+	}
+	var inspectURL string
+	if inspectAddr != "" && inspectAddr != "false" {
+		ln, err := net.Listen("tcp", inspectAddr)
+		if err != nil {
+			logger.Warn("Failed to start request inspector, continuing without it", "address", inspectAddr, "error", err)
+		} else {
+			ins := inspector.New(forwardHandler)
+			forwardHandler = ins
+			inspectURL = "http://" + ln.Addr().String()
+			go func() {
+				err := http.Serve(ln, ins.Handler())
+				logger.Error("Request inspector stopped", "error", err)
+			}()
+		}
+	}
+
 	s := httptest.NewServer(forwardHandler)
 	logger.Debug("Capture server is running on", "url", s.URL)
 
@@ -115,6 +145,7 @@ func actionHTTP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) erro
 			surl.Host,
 			cmp.Or(cmd.String("token"), config.Token),
 			cmd.String("subdomain"),
+			inspectURL,
 		)
 		if err != nil {
 			if time.Now().After(cooldownAfter) {
@@ -135,11 +166,14 @@ func actionHTTP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) erro
 }
 
 type Config struct {
-	RemoteAddr      string `yaml:"remote_addr"`
-	ForwardAddr     string `yaml:"forward_addr"`
-	Token           string `yaml:"token"`
-	DynamicForwards string `yaml:"dynamic_forwards"`
+	RemoteAddr      string  `yaml:"remote_addr"`
+	ForwardAddr     string  `yaml:"forward_addr"`
+	Token           string  `yaml:"token"`
+	DynamicForwards string  `yaml:"dynamic_forwards"`
+	InspectAddr     *string `yaml:"inspect_addr"` // Nil means default
 }
+
+const defaultInspectAddr = "127.0.0.1:4040"
 
 func loadConfig(configPath string) (*Config, error) {
 	p, err := os.ReadFile(configPath)
@@ -160,7 +194,7 @@ const (
 	protocolTCP  string = "tcp"
 )
 
-func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, subdomain string) error {
+func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, subdomain, inspectURL string) error {
 	client, err := ssh.Dial(
 		"tcp",
 		remoteAddr,
@@ -214,7 +248,11 @@ func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, s
 	if serverInfo.HostURL != "" {
 		message = fmt.Sprintf("🎉 You're ready to go live at %s!", serverInfo.HostURL)
 	}
-	logger.Info(message, "remote", remoteAddr)
+	attrs := []any{"remote", remoteAddr}
+	if inspectURL != "" {
+		attrs = append(attrs, "inspector", inspectURL)
+	}
+	logger.Info(message, attrs...)
 	for {
 		remote, err := remoteListener.Accept()
 		if err != nil {

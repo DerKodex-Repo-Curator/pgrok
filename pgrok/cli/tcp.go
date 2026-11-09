@@ -91,6 +91,7 @@ func actionTCP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) error
 			forwardAddr,
 			cmp.Or(cmd.String("token"), config.Token),
 			"", // No subdomain as TCP doesn't use it
+			"", // No request inspector for TCP
 		)
 		if err != nil {
 			if time.Now().After(cooldownAfter) {
