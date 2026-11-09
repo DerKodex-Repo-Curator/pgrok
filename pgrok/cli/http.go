@@ -50,6 +50,10 @@ func commandHTTP(homeDir string, logger *logx.Logger) *cli.Command {
 				Aliases: []string{"t"},
 			},
 			&cli.StringFlag{
+				Name:  "host-key-fingerprint",
+				Usage: "The SHA256 fingerprint of the server's host key to pin, instead of trusting it on first use",
+			},
+			&cli.StringFlag{
 				Name:    "subdomain",
 				Usage:   "specify a custom subdomain prefix for a deterministic tunnel URL",
 				Aliases: []string{"s"},
@@ -106,6 +110,10 @@ func actionHTTP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) erro
 	logger.Debug("Capture server is running on", "url", s.URL)
 
 	surl, _ := url.Parse(s.URL)
+	hostKeyCallback, err := newHostKeyCallback(logger, configPath, cmp.Or(cmd.String("host-key-fingerprint"), config.HostKeyFingerprint))
+	if err != nil {
+		logger.FatalContext(ctx, "Failed to set up host key verification", "error", err)
+	}
 	cooldownAfter := time.Now().Add(time.Minute)
 	for failed := 0; ; failed++ {
 		err := tryConnect(
@@ -115,8 +123,13 @@ func actionHTTP(ctx context.Context, cmd *cli.Command, logger *logx.Logger) erro
 			surl.Host,
 			cmp.Or(cmd.String("token"), config.Token),
 			cmd.String("subdomain"),
+			hostKeyCallback,
 		)
 		if err != nil {
+			var mismatch *hostKeyMismatchError
+			if errors.As(err, &mismatch) {
+				logger.FatalContext(ctx, mismatch.Error())
+			}
 			if time.Now().After(cooldownAfter) {
 				failed = 0
 			}
@@ -139,6 +152,9 @@ type Config struct {
 	ForwardAddr     string `yaml:"forward_addr"`
 	Token           string `yaml:"token"`
 	DynamicForwards string `yaml:"dynamic_forwards"`
+	// HostKeyFingerprint is the SHA256 fingerprint of the server's host key to
+	// pin, instead of trusting it on first use.
+	HostKeyFingerprint string `yaml:"host_key_fingerprint"`
 }
 
 func loadConfig(configPath string) (*Config, error) {
@@ -160,7 +176,7 @@ const (
 	protocolTCP  string = "tcp"
 )
 
-func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, subdomain string) error {
+func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, subdomain string, hostKeyCallback ssh.HostKeyCallback) error {
 	client, err := ssh.Dial(
 		"tcp",
 		remoteAddr,
@@ -169,7 +185,8 @@ func tryConnect(logger *logx.Logger, protocol, remoteAddr, forwardAddr, token, s
 			Auth: []ssh.AuthMethod{
 				ssh.Password(token),
 			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			HostKeyCallback:   hostKeyCallback,
+			HostKeyAlgorithms: hostKeyAlgorithms,
 		},
 	)
 	if err != nil {
