@@ -2,6 +2,7 @@ import { Button } from "@/components/retroui/Button";
 import { Card } from "@/components/retroui/Card";
 import { Text } from "@/components/retroui/Text";
 import { useState } from "react";
+import RegenerateToken from "../components/RegenerateToken";
 import ThemeToggle from "../components/ThemeToggle";
 import useUser from "../hooks/useUser";
 
@@ -36,11 +37,12 @@ export default function DashboardPage() {
             <dl className="divide-y-2 divide-border">
               <Row label="Display name">{user.displayName}</Row>
               <Row label="Token">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <code className="break-all rounded border-2 border-border bg-background px-2 py-1 text-sm">
                     {user.token}
                   </code>
                   <CopyButton value={user.token} />
+                  <RegenerateToken />
                 </div>
               </Row>
               <Row label="Public URL">

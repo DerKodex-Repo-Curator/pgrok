@@ -16,7 +16,6 @@ import (
 	"unknwon.dev/x/logx"
 
 	"github.com/pgrok/pgrok/internal/conf"
-	"github.com/pgrok/pgrok/internal/cryptoutil"
 	"github.com/pgrok/pgrok/internal/database"
 	"github.com/pgrok/pgrok/internal/strutil"
 	"github.com/pgrok/pgrok/internal/userutil"
@@ -59,6 +58,7 @@ func NewServer(logger *logx.Logger, config *conf.Config, db *database.DB) (*http
 	// Gogs splits its api and web handlers.
 	f.Group("/api", func() {
 		f.Get("/user-info", authenticate, getUserInfo)
+		f.Post("/regenerate-token", authenticate, requireJSON, postRegenerateToken(db))
 		f.Get("/identity-provider", getIdentityProvider)
 	})
 
@@ -182,7 +182,6 @@ func getOIDCCallback(logger *logx.Logger, db *database.DB) flamego.Handler {
 			database.UpsertPrincipalOptions{
 				Identifier:  userInfo.Identifier,
 				DisplayName: userInfo.DisplayName,
-				Token:       cryptoutil.SHA1(strutil.MustRandomChars(10)),
 				Subdomain:   subdomain,
 			},
 		)
