@@ -2,6 +2,7 @@ import { Button } from "@/components/retroui/Button";
 import { Card } from "@/components/retroui/Card";
 import { Text } from "@/components/retroui/Text";
 import { useState } from "react";
+import LiveTunnels from "../components/LiveTunnels";
 import ThemeToggle from "../components/ThemeToggle";
 import useUser from "../hooks/useUser";
 
@@ -56,6 +57,8 @@ export default function DashboardPage() {
             </dl>
           </Card.Content>
         </Card>
+
+        <LiveTunnels />
       </main>
     </div>
   );
