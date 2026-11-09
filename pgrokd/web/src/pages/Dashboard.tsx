@@ -3,6 +3,7 @@ import { Card } from "@/components/retroui/Card";
 import { Text } from "@/components/retroui/Text";
 import { useState } from "react";
 import LiveTunnels from "../components/LiveTunnels";
+import RequestInspector from "../components/RequestInspector";
 import ThemeToggle from "../components/ThemeToggle";
 import useUser from "../hooks/useUser";
 
@@ -59,6 +60,7 @@ export default function DashboardPage() {
         </Card>
 
         <LiveTunnels />
+        <RequestInspector />
       </main>
     </div>
   );
