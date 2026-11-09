@@ -24,3 +24,6 @@ identity_provider:
     display_name: "name"
     email: "email"
   required_domain: "example.com"
+
+admins:
+  - "unknwon@example.com"

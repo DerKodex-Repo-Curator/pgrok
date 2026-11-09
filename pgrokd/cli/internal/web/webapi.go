@@ -11,10 +11,11 @@ import (
 )
 
 func getUserInfo(c *Context, r flamego.Render) {
-	r.JSON(http.StatusOK, map[string]string{
+	r.JSON(http.StatusOK, map[string]any{
 		"displayName": c.Principal.DisplayName,
 		"token":       c.Principal.Token,
 		"url":         c.Config.Proxy.Scheme + "://" + c.Principal.Subdomain + "." + c.Config.Proxy.Domain,
+		"isAdmin":     c.IsAdmin(),
 	})
 }
 

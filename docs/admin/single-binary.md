@@ -31,6 +31,10 @@
         email: "email"
     #  # The required domain name, "field_mapping.email" is required to set for this to work.
     #  required_domain: "example.com"
+
+    # The users who can access the admin view, see "docs/admin/admin-view.md".
+    #admins:
+    #  - "alice@example.com"
     ```
 1. Download the latest version of the `pgrokd` archive from the [Releases](https://github.com/pgrok/pgrok/releases) page.
 1. Launch the `pgrokd` in background (systemd, screen, nohup).

@@ -13,6 +13,7 @@ type Principal struct {
 	Token       string `gorm:"unique;not null"`
 	Subdomain   string `gorm:"unique;not null"`
 	LastTCPPort int
+	Blocked     bool      `gorm:"not null;default:false"` // Whether the principal is blocked by an admin.
 	CreatedAt   time.Time `gorm:"not null"`
 	UpdatedAt   time.Time `gorm:"not null"`
 }
@@ -54,4 +55,15 @@ func (db *DB) GetPrincipalByToken(ctx context.Context, token string) (*Principal
 // UpdatePrincipalLastTCPPort updates the last TCP port of the principal.
 func (db *DB) UpdatePrincipalLastTCPPort(ctx context.Context, id int64, port int) error {
 	return db.WithContext(ctx).Model(&Principal{}).Where("id = ?", id).Update("last_tcp_port", port).Error
+}
+
+// ListPrincipals returns all principals ordered by their IDs.
+func (db *DB) ListPrincipals(ctx context.Context) ([]*Principal, error) {
+	var principals []*Principal
+	return principals, db.WithContext(ctx).Order("id").Find(&principals).Error
+}
+
+// UpdatePrincipalBlocked updates whether the principal is blocked.
+func (db *DB) UpdatePrincipalBlocked(ctx context.Context, id int64, blocked bool) error {
+	return db.WithContext(ctx).Model(&Principal{}).Where("id = ?", id).Update("blocked", blocked).Error
 }

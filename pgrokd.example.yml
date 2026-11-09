@@ -48,3 +48,8 @@ identity_provider:
     email: "email"
 #  # The required domain name, "field_mapping.email" is required to set for this to work.
 #  required_domain: "example.com"
+
+# The users who can access the admin view of the dashboard to manage all users and tunnels,
+# identified by the value of "identity_provider.field_mapping.identifier" (e.g. emails).
+#admins:
+#  - "alice@example.com"

@@ -5,6 +5,7 @@ export interface UserContextType {
   displayName: string;
   token: string;
   url: string;
+  isAdmin: boolean;
 }
 
 const UserContext = createContext<UserContextType>({} as UserContextType);
